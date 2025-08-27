@@ -2,7 +2,7 @@
 #    This code is the practical work for applying the Walder-Hallet (1985) rock fracture
 #    model to the experimental data obtained by Murton et. al. (unpupblished).
 #
-#    20/07/2025
+#    27/08/2025
 #    Majd Sindi
 #
 
@@ -20,10 +20,12 @@ import seaborn as sns
 import scipy.stats as stats
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
+from bisect import bisect_left
 
 import warnings
 warnings.filterwarnings('ignore')
 
+#----------------------------------------------------------
 
 def sheet_to_csv(excel_path):
     excel = pd.ExcelFile(excel_path)
@@ -36,13 +38,18 @@ def sheet_to_csv(excel_path):
         filenames.append(csv_filename)
     return filenames
 
+#---------------------------------------------------------
+
 def read_csv(file_path):
     df = pd.read_csv(file_path, header = 1, low_memory = False)
     return df
 
+#---------------------------------------------------------
+
 caisson_list = sheet_to_csv('Yr2Caissoncycles_1-24_Python_clean.xlsx')
 chambreb_list = sheet_to_csv('Yr2Chambrebcycles_1-30_Python_clean.xlsx')
 
+#---------------------------------------------------------
 
 # create data frame of all data frames
 caisson_df={}
@@ -55,6 +62,7 @@ for file in chambreb_list:
     print(f'File read: {file}')
 print('DONE!')
 
+#----------------------------------------------------------
 
 # clean B pressure and temp data
 
@@ -69,7 +77,7 @@ B4_P_rename_map =  {'P_B4_100mm': 'P_100mm', 'P_B4_150mm': 'P_150mm', 'P_B4_200m
 
 # drop columns with 'smooth' in them
 for key in caisson_df:
-    if key.startswith("Tdat"):
+    if key.startswith('Tdat'):
         word = 'smooth'
         cols_to_drop = [c for c in caisson_df[key].columns if word.lower() in c.lower()]
         caisson_df[key].drop(columns=cols_to_drop, inplace=True)
@@ -80,31 +88,34 @@ for key in caisson_df:
         caisson_df[key].drop(columns=cols_to_drop, inplace=True)
         caisson_df[key].reset_index(drop=True, inplace=True)
 
+#-------------------------------------------------------------
 
-# clean B pressure and temp data
+# clean U pressure and temp data
 
-T_B_rename_map =  {'100 mm temperature': 'T_100mm', '150 mm temperature': 'T_150mm', '200 mm temperature': 'T_200mm', \
-                 '250 mm temperature': 'T_250mm', '300 mm temperature': 'T_300mm', '350 mm temperature': 'T_350mm', \
-                 '400 mm temperature': 'T_400mm', '450 mm temperature': 'T_450mm', '50 mm temperature': 'T_050mm', \
-                 'surface temperature': 'T_000mm', 'Air temperature': 'air_temp'}
-B1_P_rename_map =  {'P_B1_100mm': 'P_100mm', 'P_B1_150mm': 'P_150mm', 'P_B1_200mm': 'P_200mm'}
-B2_P_rename_map =  {'P_B2_100mm': 'P_100mm', 'P_B2_150mm': 'P_150mm', 'P_B2_200mm': 'P_200mm'}
-B3_P_rename_map =  {'P_B3_100mm': 'P_100mm', 'P_B3_150mm': 'P_150mm', 'P_B3_200mm': 'P_200mm'}
-B4_P_rename_map =  {'P_B4_100mm': 'P_100mm', 'P_B4_150mm': 'P_150mm', 'P_B4_200mm': 'P_200mm'}
+T_U_rename_map =  {'100 mm': 'T_100mm', '150 mm': 'T_150mm', '200 mm': 'T_200mm', \
+                 '250 mm': 'T_250mm', '300 mm': 'T_300mm', '350 mm': 'T_350mm', \
+                 '400 mm': 'T_400mm', '450 mm': 'T_450mm', '50 mm': 'T_050mm', \
+                 'surface': 'T_000mm', 'Air': 'air_temp'}
+U1_P_rename_map =  {'P_U1_100mm': 'P_100mm', 'P_U1_150mm': 'P_150mm', 'P_U1_200mm': 'P_200mm', 'P_U1_250mm': 'P_250mm'}
+U2_P_rename_map =  {'P_U2_100mm': 'P_100mm', 'P_U2_150mm': 'P_150mm', 'P_U2_200mm': 'P_200mm', 'P_U2_250mm': 'P_250mm'}
+U3_P_rename_map =  {'P_U3_100mm': 'P_100mm', 'P_U3_150mm': 'P_150mm', 'P_U3_200mm': 'P_200mm', 'P_U3_250mm': 'P_250mm'}
+U4_P_rename_map =  {'P_U4_100mm': 'P_100mm', 'P_U4_150mm': 'P_150mm', 'P_U4_200mm': 'P_200mm', 'P_U4_250mm': 'P_250mm'}
+U5_P_rename_map =  {'P_U5_100mm': 'P_100mm', 'P_U5_150mm': 'P_150mm', 'P_U5_200mm': 'P_200mm', 'P_U5_250mm': 'P_250mm'}
 
 # drop columns with 'smooth' in them
-for key in caisson_df:
-    if key.startswith("Tdat"):
+for key in chambreb_df:
+    if key.startswith('Tdat'):
         word = 'smooth'
-        cols_to_drop = [c for c in caisson_df[key].columns if word.lower() in c.lower()]
-        caisson_df[key].drop(columns=cols_to_drop, inplace=True)
-        caisson_df[key].reset_index(drop=True, inplace=True)
-    elif key == 'Pdat_B':
+        cols_to_drop = [c for c in chambreb_df[key].columns if word.lower() in c.lower()]
+        chambreb_df[key].drop(columns=cols_to_drop, inplace=True)
+        chambreb_df[key].reset_index(drop=True, inplace=True)
+    elif key == 'Pdat_U':
         word = 'smooth'
-        cols_to_drop = [c for c in caisson_df[key].columns if word.lower() in c.lower()]
-        caisson_df[key].drop(columns=cols_to_drop, inplace=True)
-        caisson_df[key].reset_index(drop=True, inplace=True)
+        cols_to_drop = [c for c in chambreb_df[key].columns if word.lower() in c.lower()]
+        chambreb_df[key].drop(columns=cols_to_drop, inplace=True)
+        chambreb_df[key].reset_index(drop=True, inplace=True)
 
+#-----------------------------------------------------------------
 
 # rename B columns
 T_B1 = caisson_df['Tdat_B1'].rename(columns=T_B_rename_map)
@@ -121,6 +132,7 @@ P_B3 = caisson_df['Pdat_B'][[col for col in caisson_df['Pdat_B'].columns if not 
 P_B4 = caisson_df['Pdat_B'][[col for col in caisson_df['Pdat_B'].columns if not any(k in col for k in ['B1', 'B2', 'B3'])]] \
         .rename(columns=B4_P_rename_map)
 
+#------------------------------------------------------------------
 
 # rename U columns
 T_U1 = chambreb_df['Tdat_U1'].rename(columns=T_U_rename_map)
@@ -140,6 +152,8 @@ P_U4 = chambreb_df['Pdat_U'][[col for col in chambreb_df['Pdat_U'].columns if no
 P_U5 = chambreb_df['Pdat_U'][[col for col in chambreb_df['Pdat_U'].columns if not any(k in col for k in ['U2', 'U3', 'U4', 'U1'])]] \
         .rename(columns=B4_P_rename_map)
 
+#------------------------------------------------------------------
+
 # normalise time and merge datasets for B
 for label, T, P in [('B1', T_B1.copy(), P_B1.copy()),
                     ('B2', T_B2.copy(), P_B2.copy()),
@@ -150,8 +164,8 @@ for label, T, P in [('B1', T_B1.copy(), P_B1.copy()),
     P['t_d'] = P['Days_since_cycle1'].round(4)
 
     # choose the columns i need
-    T_cols = ['t_d'] + [c for c in T.columns if c.startswith("T_")]
-    P_cols = ['t_d'] + [c for c in P.columns if c.startswith("P_")]
+    T_cols = ['t_d'] + [c for c in T.columns if c.startswith('T_')]
+    P_cols = ['t_d'] + [c for c in P.columns if c.startswith('P_')]
 
     # eliminate duplicate measurements
     T_df = T[T_cols].groupby('t_d', as_index=False).mean()
@@ -176,6 +190,8 @@ for label, T, P in [('B1', T_B1.copy(), P_B1.copy()),
     elif label == 'B4':
         B4dat = out
 
+#------------------------------------------------------------------
+
 # normalise time and merge datasets for U
 for label, T, P in [('U1', T_U1.copy(), P_U1.copy()),
                     ('U2', T_U2.copy(), P_U2.copy()),
@@ -187,8 +203,8 @@ for label, T, P in [('U1', T_U1.copy(), P_U1.copy()),
     P['t_d'] = P['Days_since_cycle1'].round(4)
 
     # choose the columns i need
-    T_cols = ['t_d'] + [c for c in T.columns if c.startswith("T_")]
-    P_cols = ['t_d'] + [c for c in P.columns if c.startswith("P_")]
+    T_cols = ['t_d'] + [c for c in T.columns if c.startswith('T_')]
+    P_cols = ['t_d'] + [c for c in P.columns if c.startswith('P_')]
 
     # eliminate duplicate measurements
     T_df = T[T_cols].groupby('t_d', as_index=False).mean()
@@ -215,26 +231,33 @@ for label, T, P in [('U1', T_U1.copy(), P_U1.copy()),
     elif label == 'U5':
         U5dat = out
 
+#----------------------------------------------------------------
+
 # check nans
 for name, data in [('B1dat',B1dat), ('B2dat',B2dat), ('B3dat',B3dat), ('B4dat',B4dat), \
                    ('U1dat',U1dat), ('U2dat',U2dat), ('U3dat',U3dat), ('U4dat',U4dat), ('U5dat',U5dat)]:
     nan_indices = data.index[data.isna().any(axis=1)]
+    print()
     print(name)
     print(f'amount of non matched rows: {len( data[data['match'].isnull()])}')
     print(f'the number of columns to be removed due to having NaNs is :{len(nan_indices)}')
     print(f'this corresponds to {100*(len(nan_indices)/len(data)):.4f}% of the total {len(data)} data')
     print()
 
+#----------------------------------------------------------------
 
 # drop rows of non matched measurements and recheck
 for name, data in [('B1dat',B1dat.copy()), ('B2dat',B2dat.copy()), ('B3dat',B3dat.copy()), ('B4dat',B4dat.copy()), \
                    ('U1dat',U1dat.copy()), ('U2dat',U2dat.copy()), ('U3dat',U3dat.copy()), ('U4dat',U4dat.copy()), ('U5dat',U5dat.copy())]:
     data = data[data['match'].notna()].drop(columns=['match'])
     nan_indices = data.index[data.isna().any(axis=1)]
+    print()
     print(name)
     print(f'the number of columns to be removed due to having NaNs is :{len(nan_indices)}')
     print(f'this corresponds to {100*(len(nan_indices)/len(data)):.4f}% of the total {len(data)} data')
     print()
+
+#-----------------------------------------------------------------
 
 # drop tha nans (out the balcony, preferably), drop the match column
 nan_indices = B1dat.index[B1dat.isna().any(axis=1)]
@@ -282,6 +305,8 @@ U5dat.drop(nan_indices, inplace=True)
 U5dat.drop(columns=['match'], inplace=True)
 U5dat.reset_index(drop=True, inplace=True)
 
+#-----------------------------------------------------------------
+
 # exploratory data analysis
 for name, data in [('B1dat', B1dat), ('B2dat', B2dat), ('B3dat', B3dat), ('B4dat', B4dat), \
                    ('U1dat', U1dat), ('U2dat', U2dat), ('U3dat', U3dat), ('U4dat', U4dat), ('U5dat', U5dat)]:
@@ -289,7 +314,7 @@ for name, data in [('B1dat', B1dat), ('B2dat', B2dat), ('B3dat', B3dat), ('B4dat
     axes = axes.flat
     for col, ax in zip(data.columns, axes):
         sns.histplot(data=data, x=col, ax=ax, stat='density')
-        sns.kdeplot(data=data, x=col, ax=ax, color="k", linewidth=2)
+        sns.kdeplot(data=data, x=col, ax=ax, color='k', linewidth=2)
 
         mean = np.mean(data[col])
         median = np.median(data[col])
@@ -307,8 +332,10 @@ for name, data in [('B1dat', B1dat), ('B2dat', B2dat), ('B3dat', B3dat), ('B4dat
     fig.set_figwidth(fig.get_figwidth() * 2)
     fig.set_figheight(fig.get_figheight() * 4)
     fig.suptitle(name)
-    plt.savefig(f"raw_histograms_{name}.png", dpi=600, bbox_inches='tight')
+    plt.savefig(f'raw_histograms_{name}.png', dpi=600, bbox_inches='tight')
     plt.show()
+
+#-------------------------------------------------------------
 
 # corr matrices
 for name, data in [('B1dat', B1dat), ('B2dat', B2dat), ('B3dat', B3dat), ('B4dat', B4dat), \
@@ -320,15 +347,18 @@ for name, data in [('B1dat', B1dat), ('B2dat', B2dat), ('B3dat', B3dat), ('B4dat
     plt.figure(figsize=(12, 10))
     sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='rainbow', vmin=0, vmax=1)
     plt.title(f'{name} Feature Correlation Matrix')
-    plt.savefig(f"corr_matrix_{name}.png", dpi=300, bbox_inches='tight')
+    plt.savefig(f'corr_matrix_{name}.png', dpi=300, bbox_inches='tight')
     plt.tight_layout()
     plt.show()
+
+#--------------------------------------------------------------
 
 #add a time in seconds 't_s' column
 for name, data in [('B1dat',B1dat), ('B2dat',B2dat), ('B3dat',B3dat), ('B4dat',B4dat), \
                    ('U1dat',U1dat), ('U2dat',U2dat), ('U3dat',U3dat), ('U4dat',U4dat), ('U5dat',U5dat)]:
     data['t_s'] = data['t_d']*86400
 
+#-------------------------------------------------------------
 
 # extract depth from column header
 def depth_list_from_cols(dataframe):
@@ -337,15 +367,16 @@ def depth_list_from_cols(dataframe):
 
     for col in dataframe.columns:
         col = str(col)
-        if col.startswith("T_") and "mm" in col:
-            d = col.split("_")[-1].replace("mm", "")
+        if col.startswith('T_') and 'mm' in col:
+            d = col.split('_')[-1].replace('mm', '')
             T_depths.append(int(d))
-        elif col.startswith("P_") and "mm" in col:
-            d = col.split("_")[-1].replace("mm", "")
+        elif col.startswith('P_') and 'mm' in col:
+            d = col.split('_')[-1].replace('mm', '')
             P_depths.append(int(d))
 
     return T_depths, P_depths
 
+#-----------------------------------------------------------------
 
 # define constants
 v_s = 0.00109 #m³/kg #specific volume of ice
@@ -362,6 +393,7 @@ k2 = 1.0
 Vc = 50e-9 #m/s converted from nm/s
 gamma = 22
 
+#---------------------------------------------------------------
 
 # build rock properties
 rock_type = {'st_bees_ss'         : ['U1','B2'],
@@ -374,18 +406,30 @@ rock_type = {'st_bees_ss'         : ['U1','B2'],
 block_rock_type = {sample: rock for rock, samples in rock_type.items() for sample in samples}
 
 # properties
-props_by_rock = {"st_bees_ss":       {"nu": 0.2111, "mu": 12.0e9, "Kc": 0.50e6, "R_g": 0.364e-3},
-                "cove_red_ss":       {"nu": 0.2111, "mu": 12.0e9, "Kc": 0.48e6, "R_g": 0.364e-3},
-                "totternhoe_clunch": {"nu": 0.2200, "mu": 22.0e9, "Kc": 0.24e6, "R_g": 0.426e-3},
-                "monks_park_oolite": {"nu": 0.2200, "mu": 22.0e9, "Kc": 0.39e6, "R_g": 0.426e-3},
-                "tuffeau":           {"nu": 0.2200, "mu": 22.0e9, "Kc": 0.20e6, "R_g": 0.426e-3},}
+props_by_rock = {'st_bees_ss':       {'nu': 0.2111, 'mu': 12.0e9, 'Kc': 0.50e6, 'R_g': 0.364e-3},
+                'cove_red_ss':       {'nu': 0.2111, 'mu': 12.0e9, 'Kc': 0.48e6, 'R_g': 0.364e-3},
+                'totternhoe_clunch': {'nu': 0.2200, 'mu': 22.0e9, 'Kc': 0.24e6, 'R_g': 0.426e-3},
+                'monks_park_oolite': {'nu': 0.2200, 'mu': 22.0e9, 'Kc': 0.39e6, 'R_g': 0.426e-3},
+                'tuffeau':           {'nu': 0.2200, 'mu': 22.0e9, 'Kc': 0.20e6, 'R_g': 0.426e-3},}
 
+#Rf_min
+Rf_min = {'U1': 2.0e14,
+          'U2': 3.0e14,
+          'U3': 2.0e14,
+          'U4': 3.0e14,
+          'U5': 4.0e14,
+          'B1': 6.0e14,
+          'B2': 7.0e14,
+          'B3': 8.0e14,
+          'B4': 3.0e15}
 
-# walder-hallet model
+#-----------------------------------------------------------------
+
+# walder-hallet model with euler integration
 def run_walder_hallet(dataframe, block_str: str):
     '''
     takes the dataframe and which block it is. and takes the current KI, p_i, c, and w for time=t
-    returns KI, p_i, c, and w for time=t+1
+    returns KI, Vs, c, and w for time=t+1
     '''
     # assign rock properties
     rock_type = block_rock_type[block_str]
@@ -394,12 +438,15 @@ def run_walder_hallet(dataframe, block_str: str):
     Kc = props_by_rock[rock_type]['Kc']
     R_g = props_by_rock[rock_type]['R_g']
 
+    # Rf_min
+    Rfmin = Rf_min[block_str]
+
     # calculate K_star
     K_star = K_star_ratio * Kc
 
     # extract series from dataframe
     ts = dataframe['t_s']
-    Tc = dataframe[[col for col in dataframe.columns if col.startswith("T_")]]
+    Tc = dataframe[[col for col in dataframe.columns if col.startswith('T_')]]
     depths, _ = depth_list_from_cols(dataframe)
 
     # initial values
@@ -409,6 +456,7 @@ def run_walder_hallet(dataframe, block_str: str):
     # initiate outputs
     c = np.full((len(ts), len(depths)), c_0, float)
     w = np.full((len(ts), len(depths)), w_0, float)
+    p_i = np.zeros((len(ts), len(depths)), float)
     KI = np.zeros((len(ts), len(depths)), float)
     Vs = np.zeros((len(ts), len(depths)), float)
 
@@ -425,51 +473,119 @@ def run_walder_hallet(dataframe, block_str: str):
             # use previous state to compute derivatives
             c_prev = c[i - 1, j]
             w_prev = w[i - 1, j]
+            p_i_prev = p_i[i - 1, j]
+            Vs_prev = Vs[i - 1, j]
 
-            # need to solve for KI, p_i and Rf first
-            # internal ice pressure from eqn 2
-            p_i = (w_prev / c_prev) * (PI / 4.0) * (mu / (1.0 - nu))
-
-            # KI from eqn 1
-            KI[i, j] = np.sqrt(4.0 * c_prev / PI) * p_i
-
-            # Rf from eqns 6–8
-            Ifc = k1_inv * ((T_f ** 3 - Tc_now ** 3) / 3.0 - T_f * Tc_now * (T_f - Tc_now))
-            Rf = Ifc / abs(G) + (R_g ** 2) * (-Tc_now ** 2) / k2
-
-            # Vs from eqn 4
-            Vs[i, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf) * (L_f * (-Tc_now) / (v_s * T_abs)) - p_i)
-
-            # dc/dt from eqn 3
-            if KI[i, j] > K_star:
-                dc_dt = Vc * (np.exp(gamma * ((KI[i, j] / Kc) ** 2 - 1.0)) - np.exp(gamma * ((K_star / Kc) ** 2 - 1.0)))
-            else:
-                dc_dt = 0.0
-
-            # dw/dt from eqn 5
-            dw_dt = ((3.0 * v_s ** 2) / (2.0 * g * v_L)) * (1.0 / Rf) * (
-                        (L_f * (-Tc_now) / (v_s * T_abs)) - p_i) - 2 * (w_prev / c_prev) * dc_dt
+            # calculate crack growth only if freezing
 
             # Euler update
             if Tc_now <= T_f:  # freezing
-                c[i, j] = c_prev + dc_dt * dt
-                w[i, j] = max(0.0, w_prev + dw_dt * dt)  # no negative aperture
+                # need to solve for KI, p_i and Rf first
+                # Rf from eqns 6–8
+                Ifc = k1_inv * ((T_f ** 3 - Tc_now ** 3) / 3.0 - T_f * Tc_now * (T_f - Tc_now))
+                Rf = max(Ifc / abs(G) + (R_g ** 2) * (-Tc_now ** 2) / k2, Rfmin)  # implemeted Rfmin
+
+                # internal ice pressure from eqn 9 and 10
+                tao = (8 / (3 * PI)) * ((1 - nu) / mu) * ((g * c_prev * v_L) / (v_s) ** 2) * Rf
+                p_i[i, j] = (L_f * (-Tc_now)) / (v_s * T_abs) * (1 - np.exp(-t1 / tao))
+
+                # KI from eqn 1
+                KI[i, j] = np.sqrt(max(4.0 * c_prev / PI, 0.0)) * p_i[i, j]  # prevent negative square root
+
+                # Vs from eqn 4
+                Vs[i, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf) * (L_f * (-Tc_now) / (v_s * T_abs)) - p_i[i, j])
+
+                # dc/dt from eqn 3
+                if KI[i, j] > K_star:
+                    dc_dt = Vc * (np.exp(gamma * ((KI[i, j] / Kc) ** 2 - 1.0)) - np.exp(
+                        gamma * ((K_star / Kc) ** 2 - 1.0)))
+                else:
+                    dc_dt = 0.0
+
+                # dw/dt from eqn 5
+                dw_dt = ((3.0 * v_s ** 2) / (2.0 * g * v_L)) * (1.0 / Rf) * (
+                            (L_f * (-Tc_now) / (v_s * T_abs)) - p_i[i, j]) - 2 * (w_prev / c_prev) * dc_dt
+
+                c[i, j] = c_prev + (dc_dt * dt)
+                w[i, j] = w_prev + (dw_dt * dt)
+
             else:  # thawing
-                c[i, j] = c_prev
-                w[i, j] = 0.0
+                c[i, j] = c_prev  # keep crack radius
+                w[i, j] = w_0  # return to initial satate of closed crack
 
     # backfill KI[0,:] and Vs[0::]
     for j in range(len(depths)):
-        p_i0 = (PI / 4) * (mu / (1.0 - nu)) * (w[0, j] / max(c[0, j], 1e-12))
-        KI[0, j] = np.sqrt(max(4 * c[0, j] / PI, 0.0)) * p_i0
         Ifc0 = k1_inv * ((T_f ** 3 - Tc.iloc[0, j] ** 3) / 3.0 - T_f * Tc.iloc[0, j] * (T_f - Tc.iloc[0, j]))
-        Rf0 = Ifc0 / abs(G) + (R_g ** 2) * (-Tc.iloc[0, j] ** 2) / k2
-        Vs[0, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf0) * (L_f * (-Tc.iloc[0, j]) / (v_s * T_abs)) - p_i0)
+        Rf0 = max(Ifc0 / abs(G) + (R_g ** 2) * (-Tc.iloc[0, j] ** 2) / k2, Rfmin)
+        Vs[0, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf0) * (L_f * (-Tc.iloc[0, j]) / (v_s * T_abs)))
 
     return c, w, KI, Vs
 
+#-------------------------------------------------------------
 
-# walder-hallet model
+# operations using walder hallet with euler
+#uncomment to run
+
+# c_B1, w_B1, KI_B1, Vs_B1 = run_walder_hallet(B1dat, 'B1')
+# c_B2, w_B2, KI_B2, Vs_B2 = run_walder_hallet(B2dat, 'B2')
+# c_B3, w_B3, KI_B3, Vs_B3 = run_walder_hallet(B3dat, 'B3')
+# c_B4, w_B4, KI_B4, Vs_B4 = run_walder_hallet(B4dat, 'B4')
+# c_U1, w_U1, KI_U1, Vs_U1 = run_walder_hallet(U1dat, 'U1')
+# c_U2, w_U2, KI_U2, Vs_U2 = run_walder_hallet(U2dat, 'U2')
+# c_U3, w_U3, KI_U3, Vs_U3 = run_walder_hallet(U3dat, 'U3')
+# c_U4, w_U4, KI_U4, Vs_U4 = run_walder_hallet(U4dat, 'U4')
+# c_U5, w_U5, KI_U5, Vs_U5 = run_walder_hallet(U5dat, 'U5')
+
+#-----------------------------------------------------------
+
+#plot the results
+# wanted_depths = [50, 150, 250, 350]
+
+# for name, data, Vs in [('B1',B1dat,Vs_B1), ('B2',B2dat,Vs_B2), ('B3',B3dat,Vs_B3), ('B4',B4dat,Vs_B4), \
+#                    ('U1',U1dat,Vs_U1), ('U2',U2dat,Vs_U2), ('U3',U3dat,Vs_U3), ('U4',U4dat,Vs_U4), ('U5',U5dat,Vs_U5)]:
+#     depths, _ = depth_list_from_cols(data)
+#     Vs_df = pd.DataFrame(Vs)
+#     smoothed_data = Vs_df.rolling(window=21, center=True).median()
+#     smoothed_data = smoothed_data.to_numpy()
+#     plt.figure(figsize=(20, 6))
+#     for j, depth in enumerate(depths):
+#         if depth in wanted_depths:
+#             plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+#     #plt.yscale('log')
+#     plt.xlabel('Time (days)')
+#     plt.ylabel('Rate of added ice volume to cracks (m/s)')
+#     plt.ylim(np.min(Vs)/2, np.max(Vs))
+#     plt.title(F"{name}:'{block_rock_type[name]}' Vs over time')
+#     plt.legend()
+#     plt.savefig(f'Vs_{name}.png', dpi=400, bbox_inches='tight')
+#     plt.show()
+
+
+#-----------------------------------------------------------
+# wanted_depths = [50, 150, 250, 350]
+
+# for name, data, w in [('B1',B1dat,w_B1), ('B2',B2dat,w_B2), ('B3',B3dat,w_B3), ('B4',B4dat,w_B4), \
+#                    ('U1',U1dat,w_U1), ('U2',U2dat,w_U2), ('U3',U3dat,w_U3), ('U4',U4dat,w_U4), ('U5',U5dat,w_U5)]:
+#     depths, _ = depth_list_from_cols(data)
+#     w_df = pd.DataFrame(w)
+#     smoothed_data = w_df.rolling(window=21, center=True).median()
+#     smoothed_data = smoothed_data.to_numpy()
+#     plt.figure(figsize=(20, 6))
+#     for j, depth in enumerate(depths):
+#         if depth in wanted_depths:
+#             plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+#     plt.yscale('log')
+#     plt.xlabel('Time (days)')
+#     plt.ylabel('Crack width (qualitative)')
+#     plt.ylim(0, np.max(w))
+#     plt.title(F"{name}:'{block_rock_type[name]}' Crack width over time")
+#     plt.legend()
+#     #plt.savefig(f'w_{name}.png', dpi=400, bbox_inches='tight')
+#     plt.show()
+
+#--------------------------------------------------------------
+
+# walder-hallet model with RK23
 def run_walder_hallet_with_ODE(dataframe, block_str: str):
     '''
     takes the dataframe and which block it is. and takes the current KI, p_i, c, and w for time=t
@@ -482,17 +598,20 @@ def run_walder_hallet_with_ODE(dataframe, block_str: str):
     Kc = props_by_rock[rock_type]['Kc']
     R_g = props_by_rock[rock_type]['R_g']
 
+    # Rf_min
+    Rfmin = Rf_min[block_str]
+
     # calculate K_star
     K_star = K_star_ratio * Kc
 
     # extract series from dataframe
     ts = dataframe['t_s']
-    Tc = dataframe[[col for col in dataframe.columns if col.startswith("T_")]]
+    Tc = dataframe[[col for col in dataframe.columns if col.startswith('T_')]]
     depths, _ = depth_list_from_cols(dataframe)
 
     # initial values
     c_0 = 5 / 1000  # m #assumed initial crack radius #5/1000 in W-H paper
-    w_0 = 0  # m
+    w_0 = 0.5 / 1000000  # m
 
     # initiate outputs
     c = np.full((len(ts), len(depths)), c_0, float)
@@ -502,92 +621,100 @@ def run_walder_hallet_with_ODE(dataframe, block_str: str):
 
     # define right hand side of eqn in a function
     def RHS(j):
-        Tc_func = Tc.iloc[:, j].to_numpy()
-        ts_func = ts.to_numpy()
-
         def f(t, y):  # needed for solve_ivp
+            Tc_func = Tc.iloc[:, j].to_numpy()
+            ts_func = ts.to_numpy()
             c_func, w_func = y
             Tc_now_func = np.interp(t, ts_func, Tc_func)
+
             if Tc_now_func <= T_f:  # freezing cycle
                 # need to solve for KI, p_i and Rf first
-                # eqn 2
-                p_i = (w[i, j] / c[i, j]) * (PI / 4.0) * (mu / (1.0 - nu))
-
-                # eqn 1
-                KI = np.sqrt((4.0 * c[i, j]) / PI) * p_i
 
                 # eqn 8, 7 and 6
-                Ifc = k1_inv * ((T_f ** 3 - Tc_now_func ** 3) / 3.0 - T_f * Tc_now_func * (T_f - Tc_now_func))
-                Rf = Ifc / abs(G) + (R_g ** 2) * (-Tc_now_func ** 2) / k2
+                Ifc_func = k1_inv * ((T_f ** 3 - Tc_now_func ** 3) / 3.0 - T_f * Tc_now_func * (T_f - Tc_now_func))
+                Rf_func = max(Ifc_func / abs(G) + (R_g ** 2) * (-Tc_now_func ** 2) / k2, Rfmin)
+
+                # internal ice pressure from eqn 9 and 10
+                tao_func = (8 / (3 * PI)) * ((1 - nu) / mu) * ((g * c_func * v_L) / (v_s) ** 2) * Rf_func
+                p_i_func = (L_f * (-Tc_now_func)) / (v_s * T_abs) * (1 - np.exp(-t / tao_func))
+
+                # eqn 1
+                KI_func = np.sqrt(max(4.0 * c_func / PI, 0.0)) * p_i_func
 
                 # now calculate dc/dt and dw/dt
                 # eqn 3
-                if KI > K_star:
-                    dc = Vc * (np.exp(gamma * ((KI / Kc) ** 2 - 1.0)) - np.exp(gamma * ((K_star / Kc) ** 2 - 1.0)))
-                else:
-                    dc = 0.0
+                if KI_func > K_star:  # crack grows
+                    dc_func = Vc * (np.exp(gamma * ((KI_func / Kc) ** 2 - 1.0)) - np.exp(
+                        gamma * ((K_star / Kc) ** 2 - 1.0)))
+                else:  # crack doesn't grow
+                    dc_func = 0.0
 
                 # eqn 5
-                dw = (((3.0 * v_s ** 2) / (2.0 * g * v_L)) * (1.0 / Rf) * (L_f * (-Tc_now) / (v_s * T_abs)) - p_i) * dc
+                dw_func = (((3.0 * v_s ** 2) / (2.0 * g * v_L)) * (1.0 / Rf_func) * (
+                            L_f * (-Tc_now_func) / (v_s * T_abs)) - p_i_func) * dc_func
             else:
                 return [0.0, 0.0]
-            return [dc, dw]
+            return [dc_func, dw_func]
 
         return f
 
     # iterate over times
     for i in range(1, len(ts)):  # start from step 1 to have t0 and t1 values
         t0, t1 = ts[i - 1], ts[i]
+
         # iterate over all depths at that time
         for j in range(len(depths)):
+            # fetch current crack temperature
             Tc_now = Tc.iloc[i, j]
-
-            # integrate using solve_ivp
             # detect freezing cycle
             if Tc_now <= T_f:
+                # integrate using solve_ivp
                 soln = solve_ivp(RHS(j), (t0, t1), [c[i - 1, j], w[i - 1, j]], t_eval=[t1], \
                                  method='RK23', rtol=1e-6, atol=1e-10)
-                if not soln.success:  # fall back to hold state
-                    c[i, j], w[i, j] = c[i - 1, j], w[i - 1, j]
-                else:
-                    c[i, j], w[i, j] = soln.y[0, -1], soln.y[1, -1]  # no negative aperture
+                c[i, j] = soln.y[0, -1] if soln.success else c[i - 1, j]
+                w[i, j] = soln.y[1, -1] if soln.success else w[i - 1, j]
             else:  # thawing cycle
                 c[i, j] = c[i - 1, j]
-                w[i, j] = 0.0
+                w[i, j] = 0.5 / 1000000  # return to initial width
 
             # record KI and Vs at the *new* time
-            p_i = 0.0 if c[i, j] <= 0 else (PI / 4) * (mu / (1.0 - nu)) * (w[i, j] / c[i, j])
-            KI[i, j] = np.sqrt(4 * c[i, j] / PI) * p_i
-            # calculate VS from eqn 4
             Ifc = k1_inv * ((T_f ** 3 - Tc_now ** 3) / 3.0 - T_f * Tc_now * (T_f - Tc_now))
-            Rf = Ifc / abs(G) + (R_g ** 2) * (-Tc_now ** 2) / k2
+            Rf = max(Ifc / abs(G) + (R_g ** 2) * (-Tc_now ** 2) / k2, Rfmin)
+            tao = (8 / (3 * PI)) * ((1 - nu) / mu) * ((g * c[i, j] * v_L) / (v_s) ** 2) * Rf
+            p_i = (L_f * (-Tc_now)) / (v_s * T_abs) * (1 - np.exp(-t1 / tao))
+            KI[i, j] = np.sqrt(4 * c[i, j] / PI) * p_i
+
+            # calculate VS from eqn 4
             Vs[i, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf) * (L_f * (-Tc_now) / (v_s * T_abs)) - p_i)
 
     # backfill KI[0,:] because we started from step 1.
     for j in range(len(depths)):
-        p_i0 = 0.0 if c[0, j] <= 0 else (PI / 4) * (mu / (1.0 - nu)) * (w[0, j] / max(c[0, j], 1e-12))
-        KI[0, j] = np.sqrt(max(4 * c[0, j] / PI, 0.0)) * p_i0
         Ifc0 = k1_inv * ((T_f ** 3 - Tc.iloc[0, j] ** 3) / 3.0 - T_f * Tc.iloc[0, j] * (T_f - Tc.iloc[0, j]))
-        Rf0 = Ifc0 / abs(G) + (R_g ** 2) * (-Tc.iloc[0, j] ** 2) / k2
-        Vs[0, j] = (((v_s ** 2) / (g * v_L)) * (1.0 / Rf0) * (L_f * (-Tc.iloc[0, j]) / (v_s * T_abs)) - p_i0)
+        Rf0 = max(Ifc0 / abs(G) + (R_g ** 2) * (-Tc.iloc[0, j] ** 2) / k2, Rfmin)
+        Vs[0, j] = ((v_s ** 2) / (g * v_L)) * (1.0 / Rf0) * (L_f * (-Tc.iloc[0, j]) / (v_s * T_abs))
 
     return c, w, KI, Vs
 
+#---------------------------------------------------------------------
 
-c_B1, w_B1, KI_B1, Vs_B1 = run_walder_hallet(B1dat, 'B1')
-c_B2, w_B2, KI_B2, Vs_B2 = run_walder_hallet(B2dat, 'B2')
-c_B3, w_B3, KI_B3, Vs_B3 = run_walder_hallet(B3dat, 'B3')
-c_B4, w_B4, KI_B4, Vs_B4 = run_walder_hallet(B4dat, 'B4')
-c_U1, w_U1, KI_U1, Vs_U1 = run_walder_hallet(U1dat, 'U1')
-c_U2, w_U2, KI_U2, Vs_U2 = run_walder_hallet(U2dat, 'U2')
-c_U3, w_U3, KI_U3, Vs_U3 = run_walder_hallet(U3dat, 'U3')
-c_U4, w_U4, KI_U4, Vs_U4 = run_walder_hallet(U4dat, 'U4')
-c_U5, w_U5, KI_U5, Vs_U5 = run_walder_hallet(U5dat, 'U5')
+#run operations using walder hallet with RK23
+
+sc_B1, sw_B1, sKI_B1, sVs_B1 = run_walder_hallet_with_ODE(B1dat, 'B1')
+sc_B2, sw_B2, sKI_B2, sVs_B2 = run_walder_hallet_with_ODE(B2dat, 'B2')
+sc_B3, sw_B3, sKI_B3, sVs_B3 = run_walder_hallet_with_ODE(B3dat, 'B3')
+sc_B4, sw_B4, sKI_B4, sVs_B4 = run_walder_hallet_with_ODE(B4dat, 'B4')
+sc_U1, sw_U1, sKI_U1, sVs_U1 = run_walder_hallet_with_ODE(U1dat, 'U1')
+sc_U2, sw_U2, sKI_U2, sVs_U2 = run_walder_hallet_with_ODE(U2dat, 'U2')
+sc_U3, sw_U3, sKI_U3, sVs_U3 = run_walder_hallet_with_ODE(U3dat, 'U3')
+sc_U4, sw_U4, sKI_U4, sVs_U4 = run_walder_hallet_with_ODE(U4dat, 'U4')
+sc_U5, sw_U5, sKI_U5, sVs_U5 = run_walder_hallet_with_ODE(U5dat, 'U5')
+
+#-------------------------------------------------------------------
 
 wanted_depths = [50, 150, 250, 350]
 
-for name, data, Vs in [('B1',B1dat,Vs_B1), ('B2',B2dat,Vs_B2), ('B3',B3dat,Vs_B3), ('B4',B4dat,Vs_B4), \
-                   ('U1',U1dat,Vs_U1), ('U2',U2dat,Vs_U2), ('U3',U3dat,Vs_U3), ('U4',U4dat,Vs_U4), ('U5',U5dat,Vs_U5)]:
+for name, data, Vs in [('B1',B1dat,sVs_B1), ('B2',B2dat,sVs_B2), ('B3',B3dat,sVs_B3), ('B4',B4dat,sVs_B4), \
+                   ('U1',U1dat,sVs_U1), ('U2',U2dat,sVs_U2), ('U3',U3dat,sVs_U3), ('U4',U4dat,sVs_U4), ('U5',U5dat,sVs_U5)]:
     depths, _ = depth_list_from_cols(data)
     Vs_df = pd.DataFrame(Vs)
     smoothed_data = Vs_df.rolling(window=21, center=True).median()
@@ -595,12 +722,125 @@ for name, data, Vs in [('B1',B1dat,Vs_B1), ('B2',B2dat,Vs_B2), ('B3',B3dat,Vs_B3
     plt.figure(figsize=(20, 6))
     for j, depth in enumerate(depths):
         if depth in wanted_depths:
-            plt.plot(data['t_d'], smoothed_data[:, j], label=f"{depth} mm")
-    plt.yscale("log")
-    plt.xlabel("Time (days)")
-    plt.ylabel("Volume of Ice added to Crack")
-    plt.ylim(np.min(Vs)/2, np.max(Vs))
+            plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+    #plt.yscale('log')
+    plt.xlabel('Time (days)')
+    plt.ylabel('Rate of added ice volume to cracks (m/s)')
+    plt.ylim(np.min(Vs_df)/2, np.max(Vs_df))
+    plt.xlim(0, 400)
+    plt.hlines(0,0,400, ls='--', lw=1, color='k')
     plt.title(F"{name}:'{block_rock_type[name]}' Vs over time")
     plt.legend()
-    plt.savefig(f"Vs_{name}.png", dpi=400, bbox_inches='tight')
+    plt.savefig(f'Vs_{name}.png', dpi=400, bbox_inches='tight')
+    plt.show()
+
+#-----------------------------------------------------------------
+
+wanted_depths = [50, 150, 250, 350]
+
+for name, data, KI in [('B1',B1dat,sKI_B1), ('B2',B2dat,sKI_B2), ('B3',B3dat,sKI_B3), ('B4',B4dat,sKI_B4), \
+                   ('U1',U1dat,sKI_U1), ('U2',U2dat,sKI_U2), ('U3',U3dat,sKI_U3), ('U4',U4dat,sKI_U4), ('U5',U5dat,sKI_U5)]:
+    depths, _ = depth_list_from_cols(data)
+    KI_df = pd.DataFrame(KI)
+    smoothed_data = KI_df.rolling(window=21, center=True).median()
+    smoothed_data = smoothed_data.to_numpy()
+    plt.figure(figsize=(20, 6))
+    for j, depth in enumerate(depths):
+        if depth in wanted_depths:
+            plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+    #plt.yscale('log')
+    plt.xlabel('Time (days)')
+    plt.ylabel('KI')
+    plt.title(F"{name}:'{block_rock_type[name]}' KI over time")
+    plt.xlim(0, 400)
+    plt.legend()
+    plt.savefig(f'KI_{name}.png', dpi=400, bbox_inches='tight')
+    plt.show()
+
+#----------------------------------------------------------------
+
+wanted_depths = [50, 100, 150, 200, 250, 300, 350]
+
+for name, data, w in [('B1',B1dat,sw_B1), ('B2',B2dat,sw_B2), ('B3',B3dat,sw_B3), ('B4',B4dat,sw_B4), \
+                   ('U1',U1dat,sw_U1), ('U2',U2dat,sw_U2), ('U3',U3dat,sw_U3), ('U4',U4dat,sw_U4), ('U5',U5dat,sw_U5)]:
+    depths, _ = depth_list_from_cols(data)
+    w_df = pd.DataFrame(w)
+    smoothed_data = w_df.rolling(window=21, center=True).median()
+    smoothed_data = smoothed_data.to_numpy()
+    plt.figure(figsize=(20, 6))
+    for j, depth in enumerate(depths):
+        if depth in wanted_depths:
+            plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+    #plt.yscale('log')
+    plt.xlabel('Time (days)')
+    plt.ylabel('Crack width (qualitative)')
+    #plt.ylim(0, np.max(w))
+    plt.xlim(0, 400)
+    plt.title(F"{name}:'{block_rock_type[name]}' Crack width over time")
+    plt.legend()
+    #plt.savefig(f'w_{name}.png', dpi=400, bbox_inches='tight')
+    plt.show()
+
+#---------------------------------------------------------------
+
+wanted_depths = [50, 100, 150, 200, 250, 300, 350]
+
+for name, data, c in [('B1',B1dat,sc_B1), ('B2',B2dat,sc_B2), ('B3',B3dat,sc_B3), ('B4',B4dat,sc_B4), \
+                   ('U1',U1dat,sc_U1), ('U2',U2dat,sc_U2), ('U3',U3dat,sc_U3), ('U4',U4dat,sc_U4), ('U5',U5dat,sc_U5)]:
+    depths, _ = depth_list_from_cols(data)
+    c_df = pd.DataFrame(c)
+    smoothed_data = c_df.rolling(window=21, center=True).median()
+    smoothed_data = smoothed_data.to_numpy()
+    plt.figure(figsize=(20, 6))
+    for j, depth in enumerate(depths):
+        if depth in wanted_depths:
+            plt.plot(data['t_d'], smoothed_data[:, j], label=f'{depth} mm')
+    plt.xlabel('Time (days)')
+    plt.ylabel('Crack radius (qualitative)')
+    plt.xlim(0, 400)
+    plt.title(F"{name}:'{block_rock_type[name]}' Crack width over time")
+    plt.legend()
+    plt.savefig(f'c_time_{name}.png', dpi=400, bbox_inches='tight')
+    plt.show()
+
+#--------------------------------------------------------------
+
+for name, data, c in [('B1',B1dat,sc_B1), ('B2',B2dat,sc_B2), ('B3',B3dat,sc_B3), ('B4',B4dat,sc_B4), \
+                   ('U1',U1dat,sc_U1), ('U2',U2dat,sc_U2), ('U3',U3dat,sc_U3), ('U4',U4dat,sc_U4), ('U5',U5dat,sc_U5)]:
+    depths, _ = depth_list_from_cols(data)
+    lookup_time = 50
+    #time_index = data['t_d'].index(min(data['t_d'], key=lambda x:abs(x-lookup_time)))
+    time_index = bisect_left(data['t_d'], lookup_time)
+    c_df = pd.DataFrame(c)
+    c_at_time = c_df.iloc[time_index, :]
+    plt.figure(figsize=(5, 5))
+    plt.plot(c_at_time, depths)
+    plt.xlabel('crack radius (qualitative)')
+    plt.gca().invert_yaxis()
+    plt.ylabel('depth (mm)')
+    plt.title(F"{name}:'{block_rock_type[name]}' Crack radius profile at 50 days")
+    plt.grid(True)
+    #plt.legend()
+    plt.savefig(f'c_profile_50d_{name}.png', dpi=400, bbox_inches='tight')
+    plt.show()
+
+#---------------------------------------------------------------
+
+for name, data, c in [('B1',B1dat,sc_B1), ('B2',B2dat,sc_B2), ('B3',B3dat,sc_B3), ('B4',B4dat,sc_B4), \
+                   ('U1',U1dat,sc_U1), ('U2',U2dat,sc_U2), ('U3',U3dat,sc_U3), ('U4',U4dat,sc_U4), ('U5',U5dat,sc_U5)]:
+    depths, _ = depth_list_from_cols(data)
+    lookup_time = 380
+    #time_index = data['t_d'].index(min(data['t_d'], key=lambda x:abs(x-lookup_time)))
+    time_index = bisect_left(data['t_d'], lookup_time)
+    c_df = pd.DataFrame(c)
+    c_at_time = c_df.iloc[time_index, :]
+    plt.figure(figsize=(5, 5))
+    plt.plot(c_at_time, depths)
+    plt.xlabel('crack radius (qualitative)')
+    plt.gca().invert_yaxis()
+    plt.ylabel('depth (mm)')
+    plt.title(F"{name}:'{block_rock_type[name]}' Crack radius profile at {lookup_time} days")
+    plt.grid(True)
+    #plt.legend()
+    plt.savefig(f'c_profile_380d_{name}.png', dpi=400, bbox_inches='tight')
     plt.show()
