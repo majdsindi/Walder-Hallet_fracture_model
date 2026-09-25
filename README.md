@@ -4,35 +4,35 @@
 [![Institution](https://img.shields.io/badge/University-University_of_Sussex-red.svg)](https://www.sussex.ac.uk)
 [![Model](https://img.shields.io/badge/Model-Walder--Hallet_(1985)-green.svg)](#numerical-modelling)
 
-This repository contains the data cleaning pipelines, exploratory data analysis, and numerical model implementations for my MSc Data Science dissertation at the University of Sussex[cite: 1]. The project evaluates the applicability of the **Walder–Hallet (1985)** rock fracture model to real-world experimental data collected during freeze-thaw cycles by **Murton et al. (unpublished)**, building upon previous numerical work by **Abram Haas (2021)**[cite: 1].
+This repository contains the data cleaning pipelines, exploratory data analysis, and numerical model implementations for my MSc Data Science dissertation at the University of Sussex. The project evaluates the applicability of the **Walder–Hallet (1985)** rock fracture model to real-world experimental data collected during freeze-thaw cycles by **Murton et al. (unpublished)**, building upon previous numerical work by **Abram Haas (2021)**.
 
 ---
 
 ## 📌 Project Overview
 
-Rock fracture due to **ice segregation** (the growth of ice lenses fed by water migration through cryosuction) is a primary driver of bedrock instability in cold regions and permafrost zones[cite: 1]. As global temperatures shift due to climate change, understanding and predicting freeze-thaw bedrock degradation is crucial for infrastructure stability[cite: 1].
+Rock fracture due to **ice segregation** (the growth of ice lenses fed by water migration through cryosuction) is a primary driver of bedrock instability in cold regions and permafrost zones. As global temperatures shift due to climate change, understanding and predicting freeze-thaw bedrock degradation is crucial for infrastructure stability.
 
 The goal of this research is to:
-1. **Precondition & Clean** large-scale experimental time-series data from freeze-thaw laboratory experiments[cite: 1].
-2. **Re-implement** the time-dependent Walder–Hallet mathematical framework in **Python** using differential equation solvers (`scipy.integrate.solve_ivp` with RK23 integration)[cite: 1].
-3. **Compare** numerical predictions of ice volume added ($V_S$), crack propagation ($c$), and aperture growth ($w$) against physical measurements (heave, settlement, and macro-crack observations)[cite: 1].
+1. **Precondition & Clean** large-scale experimental time-series data from freeze-thaw laboratory experiments.
+2. **Re-implement** the time-dependent Walder–Hallet mathematical framework in **Python** using differential equation solvers (`scipy.integrate.solve_ivp` with RK23 integration).
+3. **Compare** numerical predictions of ice volume added ($V_S$), crack propagation ($c$), and aperture growth ($w$) against physical measurements (heave, settlement, and macro-crack observations).
 
 ---
 
 ## 🔬 Experimental Setup & Datasets
 
-The experimental data comes from multi-cycle freeze-thaw tests conducted by J. B. Murton et al. on 5 rock types (sandstones and limestones) under two distinct freezing regimes[cite: 1]:
+The experimental data comes from multi-cycle freeze-thaw tests conducted by J. B. Murton et al. on 5 rock types (sandstones and limestones) under two distinct freezing regimes:
 
 | Regime | Description | Rock Types / Identifiers |
 | :--- | :--- | :--- |
-| **Unidirectional (U1–U5)** | Top-down freezing simulating seasonal frost in non-permafrost regions[cite: 1]. | Sandstones (U1, U2), Limestones/Chalks (U3, U4, U5)[cite: 1]. |
-| **Bidirectional (B1–B4)** | Permafrost setup with active layer thawing (ALT) cycles over a frozen base[cite: 1]. | Sandstones (B1, B2), Limestones/Chalks (B3, B4)[cite: 1]. |
+| **Unidirectional (U1–U5)** | Top-down freezing simulating seasonal frost in non-permafrost regions. | Sandstones (U1, U2), Limestones/Chalks (U3, U4, U5). |
+| **Bidirectional (B1–B4)** | Permafrost setup with active layer thawing (ALT) cycles over a frozen base. | Sandstones (B1, B2), Limestones/Chalks (B3, B4). |
 
 ### Tracked Variables
-- **Temperatures ($T_c$):** Platinium resistor (Pt100) thermistor time-series at multiple block depths[cite: 1].
-- **Displacement / Heave:** LVDT sensors capturing vertical expansion/settlement[cite: 1].
-- **Pressure & Water Content:** Transducers and capacitance probe measurements[cite: 1].
-- **Macro-cracking:** Visual crack mapping and physical measurement across lateral increments during thaw periods[cite: 1].
+- **Temperatures ($T_c$):** Platinium resistor (Pt100) thermistor time-series at multiple block depths.
+- **Displacement / Heave:** LVDT sensors capturing vertical expansion/settlement.
+- **Pressure & Water Content:** Transducers and capacitance probe measurements.
+- **Macro-cracking:** Visual crack mapping and physical measurement across lateral increments during thaw periods.
 
 ---
 
@@ -90,9 +90,9 @@ Raw Excel Spreadsheets
 
 ## 📑 References & Acknowledgements
 
-- **Walder, J., & Hallet, B. (1985).** *A theoretical model of the fracture of rock during freezing.* Geological Society of America Bulletin[cite: 1].
-- **Murton, J. B., Peterson, R., & Ozouf, J.-C. (Unpublished).** *Physical and numerical modelling of rock fracture by ice segregation in limestones and sandstones.*[cite: 1]
-- **Haas, A. (2021).** *Applicability of the Walder-Hallet frost fracture model to laboratory cyclic uni- and bi-direction freeze-thaw of limestone and sandstone.* MSc Thesis, University of Alaska Fairbanks[cite: 1].
+- **Walder, J., & Hallet, B. (1985).** *A theoretical model of the fracture of rock during freezing.* Geological Society of America Bulletin.
+- **Murton, J. B., Peterson, R., & Ozouf, J.-C. (Unpublished).** *Physical and numerical modelling of rock fracture by ice segregation in limestones and sandstones.*
+- **Haas, A. (2021).** *Applicability of the Walder-Hallet frost fracture model to laboratory cyclic uni- and bi-direction freeze-thaw of limestone and sandstone.* MSc Thesis, University of Alaska Fairbanks.
 ---
 
 ## ⚙️ Methodology & Data Pipeline
