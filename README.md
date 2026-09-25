@@ -37,11 +37,15 @@ The experimental data comes from multi-cycle freeze-thaw tests conducted by J. B
 ---
 
 ## ⚙️ Methodology & Data Pipeline
+
+```text
 Raw Excel Spreadsheets
-└──> Manual Preconditioning (Excel)
-└──> Automated Python Wrangling & Timestamp Alignment (Pandas)
-└──> Exploratory Data Analysis & Correlation Heatmaps
-└──> Numerical Model (SciPy ODE Integration: RK23 / Euler)
+ └──> Manual Preconditioning (Excel)
+       └──> Automated Python Wrangling & Timestamp Alignment (Pandas)
+             └──> Exploratory Data Analysis & Correlation Heatmaps
+                   └──> Numerical Model (SciPy ODE Integration: RK23 / Euler)
+```
+
 
 1. **Data Preconditioning:**
    - Separated nested tables and multi-block sheets into discrete CSVs.
@@ -63,18 +67,20 @@ Raw Excel Spreadsheets
 ---
 
 ## 🛠️ Repository Structure
+```text
 .
 ├── data/
-│   ├── raw/                 # Original Excel data sheets (Chambre B, Caisson)
-│   └── processed/           # Standardized per-block CSV time-series
+│   ├── raw/                   # Original Excel data sheets (Chambre B, Caisson)
+│   └── processed/             # Standardized per-block CSV time-series
 ├── src/
-│   ├── data_cleaning.py     # Pandas wrangling and timestamp alignment
-│   ├── eda_plots.py         # Histograms, time-series plots, correlation matrices
+│   ├── data_cleaning.py       # Pandas wrangling and timestamp alignment
+│   ├── eda_plots.py           # Histograms, time-series plots, correlation matrices
 │   └── walder_hallet_model.py # ODE integration (solve_ivp) for crack growth
 ├── notebooks/
 │   └── eda_and_modeling.ipynb
 ├── README.md
 └── requirements.txt
+```
 
 ---
 
@@ -94,5 +100,3 @@ Raw Excel Spreadsheets
 - **Murton, J. B., Peterson, R., & Ozouf, J.-C. (Unpublished).** *Physical and numerical modelling of rock fracture by ice segregation in limestones and sandstones.*
 - **Haas, A. (2021).** *Applicability of the Walder-Hallet frost fracture model to laboratory cyclic uni- and bi-direction freeze-thaw of limestone and sandstone.* MSc Thesis, University of Alaska Fairbanks.
 ---
-
-## ⚙️ Methodology & Data Pipeline
